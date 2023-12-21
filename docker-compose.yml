@@ -1,0 +1,54 @@
+version: '3' # composeファイルのバージョン
+services:
+  api: # サービス名
+    container_name: api
+    build: # ビルドに使うDockerファイルのパス
+      context: .
+      dockerfile: ./build/go/Dockerfile
+    volumes: # マウントディレクトリ
+      - ./api:/go/src/github.com/irikodashi/qrorder/
+    tty: true # コンテナの永続化
+    env_file: # .envファイル
+      - ./build/go/.go_env
+      - ./build/mysql/.env
+    environment:
+      TZ: "Asia/Tokyo"
+    working_dir: '/go/src/github.com/irikodashi/qrorder/'
+    networks:
+      - default
+
+  dbserver:
+    container_name: dbserver
+    image: mysql:8.0.29
+    build: 
+      context: ./build/mysql
+      dockerfile: Dockerfile
+    env_file: 
+      - ./build/mysql/.env
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+      - ./build/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./work:/work
+    tty: true
+    ports:
+      - "3306:3306"
+    networks:
+      - default
+
+  webserver: 
+    container_name: webserver
+    build: 
+      context: .
+      dockerfile: ./build/node/Dockerfile
+    volumes:
+      - ./qrorder:/usr/src/app
+    #command: sh -c "cd reactapp && yarn start"
+    ports:
+      - "3000:3000"
+    stdin_open: true
+
+volumes:
+  data:
+
+
+
