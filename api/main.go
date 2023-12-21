@@ -7,6 +7,10 @@ import (
 	"log"
 )
 
+/*************************
+GORMで登録テストしたいだけであり
+画面のロジックではない
+*************************/
 
 // SHOPSテーブルのモデル
 type Shop struct {
@@ -24,6 +28,7 @@ type ShopAuth struct {
 
 func main() {
 
+	// まずいけどただ単に登録テストしたいだけなので直書き。終わったらIDもパスも全て変える
 	dsn := "user1:password@tcp(dbserver:3306)/qrsystem?charset=utf8mb4&parseTime=True&loc=Local"
 
 	// データベースに接続
