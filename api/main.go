@@ -1,49 +1,70 @@
 package main
 
 import (
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"time"
-	"log"
 )
 
-/*************************
-GORMで登録テストしたいだけであり
-画面のロジックではない
-*************************/
-
-// SHOPSテーブルのモデル
 type Shop struct {
-    ShopID    string    `gorm:"primaryKey;size:16"`
-    ShopName  string    `gorm:"size:255;not null"`
-    CreatedAt time.Time
+	ShopID    string `gorm:"primaryKey;size:16"`
+	ShopName  string `gorm:"size:255;not null"`
+	CreatedAt time.Time
 }
 
-// SHOP_AUTHテーブルのモデル
 type ShopAuth struct {
-    ShopID   string `gorm:"primaryKey;size:16"`
-    LoginID  string `gorm:"size:255"`
-    Password string `gorm:"size:255"`
+	ShopID    string `gorm:"primaryKey;size:16"`
+	Password  string `gorm:"size:255"`
+	CreatedAt time.Time
+}
+
+// ユーザー登録リクエストのための構造体
+type RegisterRequest struct {
+	UserID   string `json:"userid"`
+	Password string `json:"password"`
 }
 
 func main() {
-
-	// まずいけどただ単に登録テストしたいだけなので直書き。終わったらIDもパスも全て変える
 	dsn := "user1:password@tcp(dbserver:3306)/qrsystem?charset=utf8mb4&parseTime=True&loc=Local"
-
-	// データベースに接続
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("データベースへの接続に失敗しました: %v", err)
 	}
 
-	// テーブルの自動作成
-	err = db.AutoMigrate(&Shop{}, &ShopAuth{})
-	if err != nil {
-		log.Fatalf("テーブルの自動作成に失敗しました: %v", err)
-	}
+	r := gin.Default()
 
-	// データベース操作
-	newShop := Shop{ShopID: "123", ShopName: "My Shop", CreatedAt: time.Now()}
-	db.Create(&newShop)
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		AllowWildcard:    true,
+	}))
+
+	// ユーザー登録エンドポイント
+	r.POST("/register", func(c *gin.Context) {
+
+		var req RegisterRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// ShopAuthにユーザー情報を保存
+		newShopAuth := ShopAuth{ShopID: req.UserID, Password: req.Password}
+		if result := db.Create(&newShopAuth); result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "データベースエラー"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "登録成功"})
+	})
+
+	r.Run(":8080")
 }
